@@ -15,6 +15,7 @@
     <div class="buttons">
       <button id="startPauseBtn">Iniciar</button>
       <button id="resetBtn">Zerar</button>
+      <button id="pipBtn" title="Abrir janela flutuante sobre outros apps">Flutuar 🗗</button>
     </div>
   </div>
 
@@ -23,10 +24,12 @@
     let startTime = 0;
     let elapsedTime = 0;
     let running = false;
+    let pipWindow = null;
 
     const display = document.getElementById('display');
     const startPauseBtn = document.getElementById('startPauseBtn');
     const resetBtn = document.getElementById('resetBtn');
+    const pipBtn = document.getElementById('pipBtn');
 
     function formatTime(ms) {
       const totalSeconds = Math.floor(ms / 1000);
@@ -40,7 +43,16 @@
     function update() {
       const now = Date.now();
       elapsedTime = now - startTime;
-      display.textContent = formatTime(elapsedTime);
+      const formatted = formatTime(elapsedTime);
+      
+      // Atualiza a tela principal
+      display.textContent = formatted;
+      
+      // Se a janela flutuante estiver ativa, atualiza o tempo nela também
+      if (pipWindow) {
+        const pipDisplay = pipWindow.document.getElementById('pip-display');
+        if (pipDisplay) pipDisplay.textContent = formatted;
+      }
     }
 
     startPauseBtn.addEventListener('click', () => {
@@ -62,9 +74,60 @@
       elapsedTime = 0;
       display.textContent = '00:00:00.00';
       startPauseBtn.textContent = 'Iniciar';
+      if (pipWindow) {
+        const pipDisplay = pipWindow.document.getElementById('pip-display');
+        if (pipDisplay) pipDisplay.textContent = '00:00:00.00';
+      }
     });
 
-    // Registrar o Service Worker para habilitar o suporte PWA
+    // Lógica da Janela Flutuante (Document Picture-in-Picture)
+    pipBtn.addEventListener('click', async () => {
+      if (!('documentPictureInPicture' in window)) {
+        alert('Seu navegador ou sistema operacional não suporta a funcionalidade de janela flutuante para web.');
+        return;
+      }
+
+      // Se já estiver aberto, fechar ao clicar novamente
+      if (pipWindow) {
+        pipWindow.close();
+        pipWindow = null;
+        return;
+      }
+
+      try {
+        // Solicita a abertura de uma janela flutuante independente
+        pipWindow = await window.documentPictureInPicture.requestWindow({
+          width: 260,
+          height: 120,
+        });
+
+        // Monta o layout compacto dentro da mini janela flutuante
+        pipWindow.document.body.innerHTML = `
+          <div style="
+            background-color: #121212; 
+            color: #00e676; 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-family: monospace; 
+            font-size: 1.6rem;
+            margin: 0;
+            user-select: none;
+          ">
+            <span id="pip-display">${display.textContent}</span>
+          </div>
+        `;
+
+        pipWindow.addEventListener('pagehide', () => {
+          pipWindow = null;
+        });
+      } catch (err) {
+        console.error('Erro ao abrir janela flutuante:', err);
+      }
+    });
+
+    // Registrar o Service Worker para suporte PWA offline
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')
         .then(() => console.log('Service Worker registrado com sucesso.'))
