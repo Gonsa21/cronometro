@@ -15,7 +15,7 @@
     <div class="buttons">
       <button id="startPauseBtn">Iniciar</button>
       <button id="resetBtn">Zerar</button>
-      <button id="pipBtn" title="Abrir janela flutuante sobre outros apps">Flutuar 🗗</button>
+      <button id="pipBtn" title="Abrir janela flutuante com controles">Flutuar 🗗</button>
     </div>
   </div>
 
@@ -40,54 +40,59 @@
       return `${hours}:${minutes}:${seconds}.${milliseconds}`;
     }
 
-    function update() {
-      const now = Date.now();
-      elapsedTime = now - startTime;
-      const formatted = formatTime(elapsedTime);
-      
-      // Atualiza a tela principal
-      display.textContent = formatted;
-      
-      // Se a janela flutuante estiver ativa, atualiza o tempo nela também
+    function updateDisplay(formattedTime) {
+      display.textContent = formattedTime;
       if (pipWindow) {
         const pipDisplay = pipWindow.document.getElementById('pip-display');
-        if (pipDisplay) pipDisplay.textContent = formatted;
+        if (pipDisplay) pipDisplay.textContent = formattedTime;
       }
     }
 
-    startPauseBtn.addEventListener('click', () => {
+    function update() {
+      const now = Date.now();
+      elapsedTime = now - startTime;
+      updateDisplay(formatTime(elapsedTime));
+    }
+
+    function toggleStartPause() {
       if (!running) {
         startTime = Date.now() - elapsedTime;
         timer = setInterval(update, 10);
-        startPauseBtn.textContent = 'Pausar';
         running = true;
+        updateButtonLabels('Pausar');
       } else {
         clearInterval(timer);
-        startPauseBtn.textContent = 'Continuar';
         running = false;
+        updateButtonLabels('Continuar');
       }
-    });
+    }
 
-    resetBtn.addEventListener('click', () => {
+    function resetTimer() {
       clearInterval(timer);
       running = false;
       elapsedTime = 0;
-      display.textContent = '00:00:00.00';
-      startPauseBtn.textContent = 'Iniciar';
-      if (pipWindow) {
-        const pipDisplay = pipWindow.document.getElementById('pip-display');
-        if (pipDisplay) pipDisplay.textContent = '00:00:00.00';
-      }
-    });
+      updateDisplay('00:00:00.00');
+      updateButtonLabels('Iniciar');
+    }
 
-    // Lógica da Janela Flutuante (Document Picture-in-Picture)
+    function updateButtonLabels(startText) {
+      startPauseBtn.textContent = startText;
+      if (pipWindow) {
+        const pipStartBtn = pipWindow.document.getElementById('pip-startBtn');
+        if (pipStartBtn) pipStartBtn.textContent = startText;
+      }
+    }
+
+    startPauseBtn.addEventListener('click', toggleStartPause);
+    resetBtn.addEventListener('click', resetTimer);
+
+    // Lógica da Janela Flutuante com Controles Integrados
     pipBtn.addEventListener('click', async () => {
       if (!('documentPictureInPicture' in window)) {
-        alert('Seu navegador ou sistema operacional não suporta a funcionalidade de janela flutuante para web.');
+        alert('Seu navegador não suporta a funcionalidade de janela flutuante.');
         return;
       }
 
-      // Se já estiver aberto, fechar ao clicar novamente
       if (pipWindow) {
         pipWindow.close();
         pipWindow = null;
@@ -95,29 +100,60 @@
       }
 
       try {
-        // Solicita a abertura de uma janela flutuante independente
         pipWindow = await window.documentPictureInPicture.requestWindow({
-          width: 260,
-          height: 120,
+          width: 280,
+          height: 160,
         });
 
-        // Monta o layout compacto dentro da mini janela flutuante
+        // HTML e Estilos internos da janela flutuante
         pipWindow.document.body.innerHTML = `
           <div style="
             background-color: #121212; 
-            color: #00e676; 
+            color: #ffffff; 
             height: 100vh; 
             display: flex; 
+            flex-direction: column;
             justify-content: center; 
             align-items: center; 
-            font-family: monospace; 
-            font-size: 1.6rem;
+            font-family: Arial, sans-serif;
             margin: 0;
-            user-select: none;
+            box-sizing: border-box;
+            padding: 10px;
           ">
-            <span id="pip-display">${display.textContent}</span>
+            <div id="pip-display" style="
+              font-family: monospace; 
+              font-size: 1.8rem; 
+              color: #00e676; 
+              margin-bottom: 12px;
+            ">${display.textContent}</div>
+            
+            <div style="display: flex; gap: 8px;">
+              <button id="pip-startBtn" style="
+                font-size: 0.85rem;
+                padding: 6px 14px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                background-color: #007bff;
+                color: #fff;
+              ">${startPauseBtn.textContent}</button>
+              
+              <button id="pip-resetBtn" style="
+                font-size: 0.85rem;
+                padding: 6px 14px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                background-color: #6c757d;
+                color: #fff;
+              ">Zerar</button>
+            </div>
           </div>
         `;
+
+        // Eventos dos botões dentro da janela flutuante
+        pipWindow.document.getElementById('pip-startBtn').addEventListener('click', toggleStartPause);
+        pipWindow.document.getElementById('pip-resetBtn').addEventListener('click', resetTimer);
 
         pipWindow.addEventListener('pagehide', () => {
           pipWindow = null;
@@ -127,11 +163,10 @@
       }
     });
 
-    // Registrar o Service Worker para suporte PWA offline
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')
-        .then(() => console.log('Service Worker registrado com sucesso.'))
-        .catch(err => console.error('Erro ao registrar Service Worker:', err));
+        .then(() => console.log('Service Worker registrado.'))
+        .catch(err => console.error('Erro no Service Worker:', err));
     }
   </script>
 </body>
