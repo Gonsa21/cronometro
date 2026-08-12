@@ -48,6 +48,10 @@ body {
   opacity: 0.85;
 }
 
+#resetBtn {
+  background-color: #6c757d;
+}
+
 #pipBtn {
   background-color: #343a40;
   border: 1px solid #495057;
