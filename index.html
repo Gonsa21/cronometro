@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cronômetro PWA</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#007bff">
+</head>
+<body>
+  <div class="container">
+    <h1>Cronômetro</h1>
+    <div id="display">00:00:00.00</div>
+    <div class="buttons">
+      <button id="startPauseBtn">Iniciar</button>
+      <button id="resetBtn">Zerar</button>
+    </div>
+  </div>
+
+  <script>
+    let timer = null;
+    let startTime = 0;
+    let elapsedTime = 0;
+    let running = false;
+
+    const display = document.getElementById('display');
+    const startPauseBtn = document.getElementById('startPauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const seconds = String(totalSeconds % 60).padStart(2, '0');
+      const milliseconds = String(Math.floor((ms % 1000) / 10)).padStart(2, '0');
+      return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+    }
+
+    function update() {
+      const now = Date.now();
+      elapsedTime = now - startTime;
+      display.textContent = formatTime(elapsedTime);
+    }
+
+    startPauseBtn.addEventListener('click', () => {
+      if (!running) {
+        startTime = Date.now() - elapsedTime;
+        timer = setInterval(update, 10);
+        startPauseBtn.textContent = 'Pausar';
+        running = true;
+      } else {
+        clearInterval(timer);
+        startPauseBtn.textContent = 'Continuar';
+        running = false;
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      clearInterval(timer);
+      running = false;
+      elapsedTime = 0;
+      display.textContent = '00:00:00.00';
+      startPauseBtn.textContent = 'Iniciar';
+    });
+
+    // Registrar o Service Worker para habilitar o suporte PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker registrado com sucesso.'))
+        .catch(err => console.error('Erro ao registrar Service Worker:', err));
+    }
+  </script>
+</body>
+</html>
